@@ -17,8 +17,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
+import android.view.animation.Animation;
 import android.widget.LinearLayout;
-import android.widget.Toast;
+import android.widget.TextView;
 
 import com.example.androidnotification.CallBackUI;
 import com.example.androidnotification.R;
@@ -42,8 +43,9 @@ public class MyService2 extends Service implements CallBackUI, CallBackMove, Vie
     private LinearLayout myViewGroup;
     private MyViewScroll myViewScroll;
     private LinearLayout panel;
-    private View toolbar;
     private RecyclerView recyclerView;
+    private View toolbar;
+    private TextView txtNotification;
 
     private ArrayList<MyItemNotification> listNotification;
     private RecyclerAdapter adapter;
@@ -69,20 +71,26 @@ public class MyService2 extends Service implements CallBackUI, CallBackMove, Vie
         layoutParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE /*| WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN*/,
+                Build.VERSION.SDK_INT >= 26
+                        ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                        : WindowManager.LayoutParams.TYPE_SYSTEM_ERROR,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR,
                 PixelFormat.TRANSLUCENT);
 
         layoutParams.gravity = Gravity.TOP | Gravity.CENTER;
 
         myViewGroup = new LinearLayout(this);
-        LayoutInflater minflater = LayoutInflater.from(this);
-        View subView = minflater.inflate(R.layout.layout_notification2, myViewGroup);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View subView = inflater.inflate(R.layout.layout_notification2, myViewGroup);
 
         myViewScroll = subView.findViewById(R.id.sliding_down_toolbar_layout);
-        toolbar = subView.findViewById(R.id.toolbar);
         panel = subView.findViewById(R.id.panel);
         recyclerView = subView.findViewById(R.id.recycleView);
+        toolbar = subView.findViewById(R.id.toolbar);
+        txtNotification = subView.findViewById(R.id.txtNoti);
         currentHeight = panel.getHeight();
 
 
@@ -90,14 +98,7 @@ public class MyService2 extends Service implements CallBackUI, CallBackMove, Vie
 
         recyclerView.setOnTouchListener(this);
 
-//        layoutParams.flags =/* WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE*/
-//                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-//                        | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-//                        | WindowManager.LayoutParams.FLAG_FULLSCREEN
-//                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-//                        | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-//                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-//                        | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+        toolbar.setVisibility(View.INVISIBLE);
 
         adapter = new RecyclerAdapter(listNotification);
         recyclerView.setAdapter(adapter);
@@ -112,22 +113,13 @@ public class MyService2 extends Service implements CallBackUI, CallBackMove, Vie
             public void onSwiped(RecyclerView.ViewHolder viewHolder, int swipeDir) {
                 listNotification.remove(viewHolder.getAdapterPosition());
                 adapter.notifyDataSetChanged();
+                updateToolBar();
             }
         };
 
 
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleItemTouchCallback);
         itemTouchHelper.attachToRecyclerView(recyclerView);
-//        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-//            @Override
-//            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-//                super.onScrollStateChanged(recyclerView, newState);
-//                if (!recyclerView.canScrollVertically(1)) {
-//                    Log.e(TAG, "Last index");
-//                    isLastIndex = true;
-//                }
-//            }
-//        });
 
         windowManager.addView(myViewGroup, layoutParams);
     }
@@ -165,6 +157,14 @@ public class MyService2 extends Service implements CallBackUI, CallBackMove, Vie
     public void onSuccess(String from, String value) {
         listNotification.add(new MyItemNotification(from, value));
         adapter.notifyDataSetChanged();
+        toolbar.setVisibility(View.VISIBLE);
+        updateToolBar();
+    }
+
+    private void updateToolBar() {
+        if (listNotification.size() > 0)
+            txtNotification.setText("Bạn có " + listNotification.size() + " thông báo mới");
+        else txtNotification.setText("Không có thông báo");
     }
 
     @Override
@@ -186,6 +186,23 @@ public class MyService2 extends Service implements CallBackUI, CallBackMove, Vie
         panel.setAnimation(animation);
         panel.startAnimation(animation);
         animation.start();
+
+        animation.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                toolbar.setVisibility(View.INVISIBLE);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
     }
 
     @Override
@@ -205,19 +222,16 @@ public class MyService2 extends Service implements CallBackUI, CallBackMove, Vie
     public void move(int distance) {
         totalHeight = currentHeight + distance;
         if (totalHeight > 1 && totalHeight < MAX_HEIGHT) {
-            ResizeAnimation animation = new ResizeAnimation(panel, currentHeight, totalHeight);
-            animation.setInterpolator(new AccelerateInterpolator());
-            panel.setAnimation(animation);
-            panel.startAnimation(animation);
-            animation.start();
+            panel.getLayoutParams().height = totalHeight;
+            panel.requestLayout();
         }
     }
 
     @Override
     public void mouseDown() {
+        toolbar.setVisibility(View.VISIBLE);
         layoutParams.height = WindowManager.LayoutParams.MATCH_PARENT;
         currentHeight = panel.getHeight();
-//        layoutParamsPanel = new LinearLayout.LayoutParams(panel.getWidth(), panel.getHeight());
     }
 
     @Override

@@ -2,16 +2,19 @@
 <com.example.androidnotification.custom.MyViewScroll xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/sliding_down_toolbar_layout"
     android:layout_width="match_parent"
+    android:animateLayoutChanges="true"
     android:layout_height="match_parent"
     android:orientation="vertical">
 
     <LinearLayout
         android:id="@+id/panel"
         android:layout_width="match_parent"
+        android:animateLayoutChanges="true"
         android:layout_height="1dp"
         android:background="#03A9F4">
 
         <android.support.v7.widget.RecyclerView
+            android:layout_marginTop="16dp"
             android:id="@+id/recycleView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -20,10 +23,20 @@
 
     </LinearLayout>
 
-    <View
+    <LinearLayout
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="@android:dimen/notification_large_icon_height"
-        android:background="#2196F3" />
+        android:background="#03A9F4"
+        android:gravity="bottom">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:id="@+id/txtNoti"
+            android:text="Không có thông báo"
+            android:layout_marginBottom="2dp"
+            android:textColor="#FCFCFC"/>
+    </LinearLayout>
 
 </com.example.androidnotification.custom.MyViewScroll>

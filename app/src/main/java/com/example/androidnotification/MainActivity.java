@@ -11,7 +11,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.example.androidnotification.service.MyService;
 import com.example.androidnotification.service.MyService2;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -58,7 +57,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void stopSV() {
-        Intent intent = new Intent(this, MyService.class);
+        Intent intent = new Intent(this, MyService2.class);
         stopService(intent);
         Toast.makeText(this, "Stop Service", Toast.LENGTH_SHORT).show();
     }
