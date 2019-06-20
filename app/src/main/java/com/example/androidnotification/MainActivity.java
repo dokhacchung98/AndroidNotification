@@ -12,6 +12,7 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import com.example.androidnotification.service.MyService;
+import com.example.androidnotification.service.MyService2;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -51,7 +52,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void startSV() {
-        Intent intent = new Intent(this, MyService.class);
+        Intent intent = new Intent(this, MyService2.class);
         startService(intent);
         Toast.makeText(this, "Start Service", Toast.LENGTH_SHORT).show();
     }

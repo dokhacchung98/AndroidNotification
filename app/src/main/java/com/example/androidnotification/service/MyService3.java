@@ -7,6 +7,7 @@ import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
+import android.support.v4.widget.ViewDragHelper;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
@@ -17,19 +18,21 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.example.androidnotification.CallBackUI;
 import com.example.androidnotification.R;
 import com.example.androidnotification.adapter.RecyclerAdapter;
+import com.example.androidnotification.custom.CallBackMove;
+import com.example.androidnotification.custom.MyEvenTouchListener;
+import com.example.androidnotification.custom.MyViewScroll;
 import com.example.androidnotification.custom.ResizeAnimation;
 import com.example.androidnotification.model.MyItemNotification;
 
 import java.util.ArrayList;
 
-public class MyService extends Service implements CallBackUI, View.OnTouchListener {
+public class MyService3 extends Service implements CallBackUI, View.OnTouchListener {
     private static final int MAX_HEIGHT = 1200;
     public static final String TAG = "SMS_SERVICE";
 
@@ -37,14 +40,16 @@ public class MyService extends Service implements CallBackUI, View.OnTouchListen
     private WindowManager windowManager;
     private WindowManager.LayoutParams layoutParams;
 
-    private Button btnClose;
     private LinearLayout myViewGroup;
-    private LinearLayout layoutLarge;
-    private LinearLayout layoutSmall;
+    private MyViewScroll myViewScroll;
+    private LinearLayout panel;
+    private View toolbar;
     private RecyclerView recyclerView;
 
     private ArrayList<MyItemNotification> listNotification;
     private RecyclerAdapter adapter;
+    private ViewDragHelper dragHelper;
+
 
     @Override
     public void onCreate() {
@@ -52,7 +57,6 @@ public class MyService extends Service implements CallBackUI, View.OnTouchListen
         Log.e(TAG, "onCreate");
         smsBroadCastReceiver = new SmsBroadCastReceiver(this);
         listNotification = new ArrayList<>();
-
         initWindownManager();
 
         registerMyReceiver();
@@ -73,7 +77,25 @@ public class MyService extends Service implements CallBackUI, View.OnTouchListen
 
         myViewGroup = new LinearLayout(this);
         LayoutInflater minflater = LayoutInflater.from(this);
-        View subView = minflater.inflate(R.layout.layout_notification, myViewGroup);
+        View subView = minflater.inflate(R.layout.layout_notification3, myViewGroup);
+
+        myViewScroll = subView.findViewById(R.id.sliding_down_toolbar_layout);
+        toolbar = subView.findViewById(R.id.toolbar);
+        panel = subView.findViewById(R.id.panel);
+        recyclerView = subView.findViewById(R.id.recycleView);
+
+        recyclerView.setClickable(true);
+
+        myViewScroll.setOnTouchListener(this);
+
+        dragHelper = ViewDragHelper.create(panel, 1.0f, new ViewDragHelper.Callback() {
+            @Override
+            public boolean tryCaptureView(@NonNull View view, int i) {
+                Log.e(TAG, "try capture view");
+                return true;
+            }
+        });
+
 
 //        layoutParams.flags =/* WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE*/
 //                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
@@ -83,21 +105,6 @@ public class MyService extends Service implements CallBackUI, View.OnTouchListen
 //                        | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
 //                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
 //                        | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
-
-        btnClose = subView.findViewById(R.id.btnCloseNoti);
-        recyclerView = subView.findViewById(R.id.recycleView);
-        btnClose.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                closeWindowManager();
-            }
-        });
-        layoutSmall = subView.findViewById(R.id.layoutSmall);
-        layoutLarge = subView.findViewById(R.id.layoutLarge);
-
-        layoutSmall.setVisibility(View.GONE);
-
-        layoutSmall.setOnTouchListener(this);
 
         adapter = new RecyclerAdapter(listNotification);
         recyclerView.setAdapter(adapter);
@@ -114,6 +121,11 @@ public class MyService extends Service implements CallBackUI, View.OnTouchListen
                 adapter.notifyDataSetChanged();
             }
         };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            recyclerView.setTouchscreenBlocksFocus(false);
+        }
+
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleItemTouchCallback);
         itemTouchHelper.attachToRecyclerView(recyclerView);
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -123,7 +135,6 @@ public class MyService extends Service implements CallBackUI, View.OnTouchListen
 
                 if (!recyclerView.canScrollVertically(1)) {
                     Toast.makeText(getApplication(), "Last", Toast.LENGTH_LONG).show();
-
                 }
             }
         });
@@ -160,20 +171,11 @@ public class MyService extends Service implements CallBackUI, View.OnTouchListen
         }
     }
 
+
     @Override
     public void onSuccess(String from, String value) {
         listNotification.add(new MyItemNotification(from, value));
         adapter.notifyDataSetChanged();
-        updateWindowManager();
-    }
-
-    private void updateWindowManager() {
-//        layoutParams.flags = (layoutParams.flags & ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-
-        layoutParams.height = WindowManager.LayoutParams.MATCH_PARENT;
-
-        layoutSmall.setVisibility(View.VISIBLE);
-        layoutSmall.getLayoutParams().height = 50;
     }
 
     @Override
@@ -181,57 +183,18 @@ public class MyService extends Service implements CallBackUI, View.OnTouchListen
         Log.e(TAG, errorMessage);
     }
 
-    private int firstY;
-    private int currentY;
-    private int lastY;
-
-    @Override
-    public boolean onTouch(View v, MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                firstY = (int) event.getY();
-                break;
-            case MotionEvent.ACTION_MOVE:
-                currentY = (int) event.getRawY();
-                int height = currentY;
-                if (height <= MAX_HEIGHT) {
-                    layoutLarge.getLayoutParams().height = height;
-                } else {
-                    height = MAX_HEIGHT;
-                }
-//                layoutLarge.getLayoutParams().height = height;
-                ResizeAnimation animation = new ResizeAnimation(layoutLarge, layoutLarge.getLayoutParams().height, height);
-                animation.setInterpolator(new AccelerateInterpolator());
-                animation.setDuration(000);
-                layoutLarge.setAnimation(animation);
-                layoutLarge.startAnimation(animation);
-                animation.start();
-                break;
-            case MotionEvent.ACTION_UP:
-                lastY = (int) event.getRawY();
-                int oldHeight = layoutLarge.getLayoutParams().height;
-                final int newHeight;
-                if (lastY < MAX_HEIGHT / 2 - 20) {
-                    newHeight = 1;
-                } else {
-                    newHeight = MAX_HEIGHT;
-                }
-
-                ResizeAnimation animation1 = new ResizeAnimation(layoutLarge, oldHeight, newHeight);
-                animation1.setInterpolator(new AccelerateInterpolator());
-                animation1.setDuration(100);
-                layoutLarge.setAnimation(animation1);
-                layoutLarge.startAnimation(animation1);
-                animation1.start();
-
-                break;
-        }
-        return true;
-    }
-
     @Override
     public void onDestroy() {
         super.onDestroy();
-        windowManager.removeView(myViewGroup);
+        closeWindowManager();
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        dragHelper.processTouchEvent(event);
+        return true;
+    }
+
+    private class OurViewDragHelperCallbacks {
     }
 }
